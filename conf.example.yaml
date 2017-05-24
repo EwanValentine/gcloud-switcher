@@ -1,0 +1,4 @@
+- name: 'test'
+  project: 'test-001'
+  region: 'europe-west1-d'
+  cluster: 'test-cluster'

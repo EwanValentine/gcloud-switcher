@@ -43,6 +43,9 @@ function Gcloud() {}
  */
 Gcloud.prototype.switch = config => {
   return new Promise((resolve, reject) => {
+    console.log(chalk.green('Login'))
+    shell.exec('gcloud auth login')
+
     console.log(chalk.green(`Setting region to ${config.region}`))
     shell.exec(`gcloud config set compute/zone ${config.region}`)
 

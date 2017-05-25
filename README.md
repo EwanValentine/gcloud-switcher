@@ -1,7 +1,6 @@
 # Google Cloud Switcher
 
-
-## Switch between Google Cloud projects
+## Switch between Google Cloud projects 
 
 - `$ npm install -g gcloud-switcher`
 - `$ gcswitch`

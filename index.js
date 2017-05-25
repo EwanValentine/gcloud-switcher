@@ -10,7 +10,18 @@ const inquirer    = require('inquirer');
 const Preferences = require('preferences');
 const Spinner     = CLI.Spinner;
 const _           = require('lodash')
-const shell = require('shelljs')
+const shell       = require('shelljs')
+const program = require('commander')
+
+const showHelp = () => {
+  console.log(chalk.yellow('test'))
+  return
+}
+
+program
+  .version('0.0.1')
+  .option('-h, --help', 'Display help', showHelp)
+  .parse(process.argv);
 
 clear()
 
@@ -22,14 +33,14 @@ console.log(
   }))
 )
 
-const loadConfig = (name, file = 'conf.yaml') => {
-  console.log(file)
+const loadConfig = (file = 'conf.yaml') => {
   return new Promise((resolve, _) => {
     const entries = yaml.safeLoad(fs.readFileSync(file, 'utf8'))
-    const config = entries.find(config => config.name === name)
-    resolve(config)
+    resolve(entries)
   })
 }
+
+const findConfigEntry = (name, configs) => configs.find(config => config.name === name)
 
 /**
  * Gcloud
@@ -68,46 +79,48 @@ const getProject = callback => {
   const gcloud = new Gcloud()
   const argv = require('minimist')(process.argv.slice(2))
 
-  const questions = [
-    {
-      name: 'name',
-      type: 'input',
-      message: 'Enter your Google Cloud Project name',
-      validate: value => {
-        if (value.length) {
-          return true
-        }
-
-        return 'Please enter a valid project name'
+  inquirer.prompt({
+    name: 'configPath',
+    type: 'input',
+    default: 'conf.yaml',
+    message: 'Enter a file name for your conf.yaml',
+    validate: value => {
+      if (value.length) {
+        return true
       }
+
+      return 'Please enter a valid file path'
     },
-    {
-      name: 'configPath',
-      type: 'input',
-      default: 'conf.yaml',
-      message: 'Enter a file name for your conf.yaml',
-      validate: value => {
-        if (value.length) {
-          return true
+  }).then(answers => {
+    return loadConfig(answers.configPath).then(configs => {
+      const configNames = configs.map(conf => conf.name)
+      return inquirer.prompt({
+        name: 'config',
+        type: 'list',
+        choices: [...configNames],
+        message: 'Enter your Google Cloud Project name',
+        validate: value => {
+          if (value.length) {
+            return true
+          }
+          return 'Please enter a valid project name'
         }
-
-        return 'Please enter a valid file path'
-      }
-    }
-  ]
-
-  inquirer.prompt(questions).then(answers => {
+      }).then(answers => {
+        return { configName: answers.config, configs }
+      })
+    })
+  })
+  .then(({ configName, configs }) => {
     const status = new Spinner('Switching...')
     status.start()
-    loadConfig(answers.name, answers.configPath).then(config => {
-      gcloud.switch(config).then(res => {
-        status.stop()
-        callback()
-      }).catch(e => {
-        status.stop()
-        const err = new Error('Failed to switch projects')
-        printError(err.message)
-      })
+    const config = findConfigEntry(configName, configs)
+    gcloud.switch(config).then(res => {
+      status.stop()
+      callback()
+    }).catch(e => {
+      status.stop()
+      const err = new Error('Failed to switch projects')
+      printError(err.message)
     }).catch(e => {
       status.stop()
       const err = new Error('Failed to load config file')
